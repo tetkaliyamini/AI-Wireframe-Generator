@@ -1,0 +1,19 @@
+# Core dependencies
+streamlit==1.39.0
+pillow==10.4.0
+plotly==5.24.1
+
+# For AI / Gemini API interaction
+google-generativeai==0.8.5
+protobuf==4.25.3
+
+# Optional: for handling API responses, JSON, etc.
+requests==2.32.3
+python-dotenv==1.0.1
+
+# Visualization and wireframe layout helpers
+numpy==1.26.4
+pandas==2.2.2
+
+# If you’re using Framer Motion-like animations or layout logic in Streamlit
+altair==5.4.1
