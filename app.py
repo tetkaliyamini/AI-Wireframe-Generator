@@ -14,7 +14,7 @@ from io import BytesIO
 # CONFIGURATION & SETUP
 # =====================================================
 load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY")
+API_KEY = os.getenv("GOOGLE_APIKEY")
 
 ELEMENT_COLORS = {
     "navbar": {"fill": "#3B82F6", "text": "#FFFFFF", "border": "#1E40AF"},
@@ -35,7 +35,7 @@ ELEMENT_COLORS = {
 def configure_gemini(api_key):
     """Configure Gemini API with error handling."""
     if not api_key:
-        st.error("❌ Missing GOOGLE_API_KEY in your environment or .env file.")
+        st.error("❌ Missing GOOGLE_APIKEY in your environment or .env file.")
         st.stop()
     genai.configure(api_key=api_key)
     return genai.GenerativeModel("gemini-2.5-pro")
@@ -341,3 +341,4 @@ if generate_btn and user_prompt.strip():
 
 elif not user_prompt.strip() and generate_btn:
     st.warning("⚠️ Please enter a description of your UI idea.")
+
