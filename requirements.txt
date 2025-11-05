@@ -3,3 +3,4 @@ google-generativeai==0.8.5
 plotly
 python-dotenv
 kaleido==0.2.1
+pathlib==1.0.1
