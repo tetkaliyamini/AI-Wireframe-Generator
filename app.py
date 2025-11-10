@@ -22,7 +22,7 @@ except ImportError:
 # STREAMLIT CONFIGURATION
 # =========================================================
 st.set_page_config(
-    page_title="AI Website Wireframe Generator (Enhanced)",
+    page_title="AI Website Wireframe Generator (Editable)",
     page_icon="🌐",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -75,12 +75,14 @@ def generate_website_json(prompt):
         {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
     ]
 
-    # --- ENHANCED SYSTEM PROMPT FOR UNIQUE CONTENT ---
+    # --- ENHANCED SYSTEM PROMPT FOR UNIQUE CONTENT AND MORE PAGES ---
     system_prompt = """
 You are an expert UI/UX wireframe designer for multi-page websites.
 Generate a clean, well-aligned, scrollable layout structure in JSON.
 
 **VERY IMPORTANT:** Ensure that the content, element IDs, and general layout structure for each page in the "pages" array are unique and distinct based on the pageTitle (e.g., Home page needs a hero section; Contact needs an input and a button). Do not copy content between pages.
+
+**PAGE COUNT RULE:** Unless the user specifies a lower number, generate between 5 and 10 distinct pages for the website (e.g., Home, About, Services, Pricing, Blog, Contact, etc.) to ensure a comprehensive wireframe.
 
 Design elements (x, y, width, height) to adapt reasonably well to a mobile stacking view (using larger widths like 90% for desktop sections).
 
@@ -88,7 +90,6 @@ Ensure:
 - Pages do not overlap elements.
 - Vertical spacing (y values) is consistent (minimum 80px between sections).
 - x values stay between 5%–95% for side padding.
-- Create up to 8 pages if the user requests a large website.
 - Logical layout order: header → hero → sections → footer.
 
 Return only valid JSON (no markdown) using this structure:
@@ -118,6 +119,7 @@ Return only valid JSON (no markdown) using this structure:
                 safety_settings=safety_settings
             )
             response = model.generate_content(prompt)
+            # Use extract_json_from_response to handle potential markdown wrapping
             wireframe_data = extract_json_from_response(response.text)
             if not wireframe_data or "pages" not in wireframe_data:
                 st.error("❌ Gemini failed to return valid structure.")
@@ -133,6 +135,7 @@ Return only valid JSON (no markdown) using this structure:
 def generate_element_html(element):
     """Render a single layout element as visually enhanced HTML."""
     elem_type = element.get("type", "section")
+    # Wrap content in a span with a unique identifier for editing (optional but helpful)
     content = element.get("content", "Placeholder Content")
     x, y = element.get("x", 5), element.get("y", 0)
     width, height = element.get("width", 90), element.get("height", 80)
@@ -157,42 +160,43 @@ def generate_element_html(element):
         padding: 10px;
     """
 
-    inner_content = f"<p style='margin:0; max-height:100%; overflow:hidden; text-overflow:ellipsis;'>{content}</p>"
+    inner_content = f"<div class='editable-content' style='margin:0; max-height:100%; overflow:hidden; text-overflow:ellipsis;'>{content}</div>"
     
     # Custom styles based on element type
     if elem_type == "section":
         style += "background-color: #ffffff; border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
-        inner_content = f"<p style='margin:0; font-size:16px; font-weight:600; color:#555;'>SECTION: {content}</p>"
+        inner_content = f"<div class='editable-content' style='margin:0; font-size:16px; font-weight:600; color:#555;'>SECTION: {content}</div>"
     elif elem_type == "card":
         style += "background-color: #f8f8ff; border: 1px solid #d0d0ff; box-shadow: 0 2px 5px rgba(0,0,0,0.08);"
-        inner_content = f"<p style='margin:0; font-size:14px; color:#555;'>CARD: {content}</p>"
+        inner_content = f"<div class='editable-content' style='margin:0; font-size:14px; color:#555;'>CARD: {content}</div>"
     elif elem_type == "button":
         style += "background-color: #007bff; color: white; border: none; font-size: 14px; font-weight: 700; border-radius: 6px;"
-        inner_content = content
+        inner_content = f"<div class='editable-content'>{content}</div>"
     elif elem_type == "input":
         style += "background-color: white; border: 1px dashed #777; font-size: 14px; color: #555; justify-content: flex-start; padding-left: 15px;"
-        inner_content = f"Input: {content}"
+        inner_content = f"<div class='editable-content'>Input: {content}</div>"
     elif elem_type == "image":
         style += "background-color: #e0e0e0; border: 2px dashed #999; color: #555;"
-        inner_content = f"<p style='margin:0; font-size:14px;'>[Image Placeholder: {content}]</p>"
+        inner_content = f"<div class='editable-content' style='margin:0; font-size:14px;'>[Image Placeholder: {content}]</div>"
     elif elem_type == "text":
         style += "background-color: #ffffff; border: none; box-shadow: none; color: #333; justify-content: flex-start; align-items: flex-start; padding: 0 10px;"
-        inner_content = f"<p style='margin:0; text-align:left; font-size:14px;'>{content}</p>"
+        inner_content = f"<div class='editable-content' style='margin:0; text-align:left; font-size:14px;'>{content}</div>"
     elif elem_type in ["header", "footer"]:
         style += "background-color: #333333; color: white; border: none; font-size: 18px;"
+        inner_content = f"<div class='editable-content'>{content}</div>"
         
     return f"""
         <div class='element {elem_type}' style='{style}'>
             <span class='element-label'>{elem_type.upper()}</span>
-            <div style='text-align:center;'>{inner_content}</div>
+            {inner_content}
         </div>
     """
 
 # =========================================================
-# MULTI-PAGE HTML RENDERER (ENHANCED STYLES)
+# MULTI-PAGE HTML RENDERER (MODIFIED FOR EDITING)
 # =========================================================
 def generate_multi_page_html(website_data):
-    """Convert JSON structure into visual HTML wireframe with multiple pages and views."""
+    """Convert JSON structure into visual HTML wireframe with multiple pages and views, including edit logic."""
     if not website_data:
         return ""
 
@@ -224,7 +228,6 @@ def generate_multi_page_html(website_data):
             current_max_y = max(current_max_y, el.get("y", 0) + el.get("height", 0))
 
         display = "block" if i == 0 else "none"
-        # The content for each page is wrapped in its own unique page-container div
         page_contents += f"""
         <div id="{pid}" class="page-container" style="background:{bg};display:{display};min-height:{current_max_y + 120}px;">
             {elements_html}
@@ -279,17 +282,17 @@ def generate_multi_page_html(website_data):
             }}
             /* --- Mobile Styling Overrides (Responsive Simulation) --- */
             .mobile-screen .page-container {{
-                padding: 10px; /* Less padding on mobile */
+                padding: 10px; 
                 width: 100%;
-                min-height: auto; /* Allow height to flex */
+                min-height: auto; 
             }}
             .mobile-screen .element {{
-                position: relative !important; /* Force elements out of absolute flow */
+                position: relative !important; 
                 left: 0 !important;
                 top: auto !important;
-                width: 96% !important; /* Force nearly full width */
-                margin: 10px auto; /* Add vertical spacing */
-                height: 60px; /* Standardize height for better stacking visibility */
+                width: 96% !important; 
+                margin: 10px auto; 
+                height: 60px; 
             }}
             .mobile-screen .element-label {{ top: -15px; left: 5%; }}
             .mobile-screen .section,
@@ -300,7 +303,7 @@ def generate_multi_page_html(website_data):
             .mobile-screen .input {{ height: 40px !important; }}
 
 
-            /* --- Tab Navigation Styles (Unchanged) */
+            /* --- Tab Navigation Styles --- */
             .tab-nav {{
                 display: flex;
                 flex-wrap: wrap;
@@ -356,6 +359,30 @@ def generate_multi_page_html(website_data):
                 z-index: 2;
             }}
             
+            /* --- NEW: Edit Mode Styles --- */
+            .edit-mode .element {{
+                border: 1px dashed #ff6b6b !important;
+                cursor: pointer;
+                box-shadow: 0 0 5px rgba(255,107,107,0.5);
+                transition: all 0.2s;
+            }}
+            .edit-mode .element:hover {{
+                background-color: #fff0f0;
+            }}
+            .editable-content {{
+                pointer-events: auto !important; /* Allow interaction with content box */
+            }}
+            .edit-mode .editable-content {{
+                pointer-events: auto; /* Enable interaction inside the element */
+            }}
+            .editable-content[contenteditable="true"] {{
+                outline: 2px solid #007bff; /* Visual cue when editing */
+                cursor: text;
+                padding: 5px;
+                border-radius: 4px;
+                background: #e6f7ff;
+            }}
+
             /* Download button position needs adjustment for Streamlit frame */
             .download-btn {{
                 position: fixed; top: 12px; right: 20px;
@@ -372,9 +399,6 @@ def generate_multi_page_html(website_data):
         <button class="download-btn" onclick="downloadScreenshot()">Download PNG</button>
         <h2 style="text-align:center;">{title}</h2>
 
-        <div class="view-mode-selector">
-             </div>
-
         <div id="wireframe-container" class="wireframe-container">
             <div id="desktop-view" class="wireframe-wrapper">
                 <div class="tab-nav" id="desktop-tabs-container">{page_tabs}</div>
@@ -390,7 +414,7 @@ def generate_multi_page_html(website_data):
         </div>
 
         <script>
-            let currentView = 'desktop'; // Tracks the active view
+            let currentView = 'desktop'; 
             
             // Function to handle page/tab switching
             function showPage(id) {{
@@ -415,33 +439,72 @@ def generate_multi_page_html(website_data):
                     .forEach(btn => btn.classList.add('active'));
             }}
 
-            // Function for view mode selection (called by Streamlit control)
+            // Function for view mode selection (MODIFIED to handle 'edit')
             function switchView(mode) {{
                 currentView = mode;
                 const desktop = document.getElementById('desktop-view');
                 const mobile = document.getElementById('mobile-view');
+                const container = document.getElementById('wireframe-container');
+                
+                container.classList.remove('edit-mode'); // Clear edit mode by default
+                
                 if (mode === 'mobile') {{
                     desktop.style.display = 'none';
                     mobile.style.display = 'block';
-                }} else {{
-                    desktop.style.display = 'block';
+                }} else if (mode === 'desktop' || mode === 'edit') {{
+                    // Use desktop layout for both desktop view and editing
+                    desktop.style.display = 'block'; 
                     mobile.style.display = 'none';
+                    if (mode === 'edit') {{
+                        container.classList.add('edit-mode'); // Apply edit styles
+                    }}
                 }}
+
                 // Ensure the currently active tab remains active in the new view
                 const activeId = document.querySelector('.tab-button.active')?.getAttribute('onclick')?.match(/'(.*?)'/)?.[1];
                 if (activeId) showPage(activeId);
             }}
+
+            // --- NEW: CONTENT EDITING LOGIC (Double Click) ---
+            document.addEventListener('dblclick', function(e) {{
+                // Find the closest parent element with the class 'editable-content'
+                const contentDiv = e.target.closest('.editable-content');
+                
+                // Only allow editing if we are in 'edit' mode AND we double-clicked editable content
+                if (currentView === 'edit' && contentDiv) {{
+                    
+                    // Check if the element is already editable
+                    if (contentDiv.contentEditable === 'true') return;
+                    
+                    // 1. Enable Content Editing
+                    contentDiv.contentEditable = 'true';
+                    contentDiv.focus();
+                    
+                    // 2. Add Listener to SAVE/DISABLE editing when clicking away
+                    function disableEdit() {{
+                        contentDiv.contentEditable = 'false';
+                        contentDiv.removeEventListener('blur', disableEdit);
+                        // In a full solution, the new content would be sent to the Python backend here.
+                    }}
+                    
+                    contentDiv.addEventListener('blur', disableEdit);
+                }}
+            }});
+
 
             // Initialize on load
             document.addEventListener('DOMContentLoaded', () => {{
                 // Get the ID of the first page to initialize the view
                 const firstId = document.querySelector('.tab-button')?.getAttribute('onclick')?.match(/'(.*?)'/)?.[1];
                 if (firstId) showPage(firstId);
+                
+                // Set initial view mode based on Streamlit state (injected by Python)
+                // The main function will handle calling switchView() after this
             }});
             
             // Screenshot logic uses the currently visible wrapper
             function downloadScreenshot() {{
-                const el = document.getElementById(currentView === 'desktop' ? 'desktop-view' : 'mobile-view');
+                const el = document.getElementById(currentView === 'desktop' || currentView === 'edit' ? 'desktop-view' : 'mobile-view');
                 const dlBtn = document.querySelector('.download-btn');
                 if (dlBtn) dlBtn.style.display = 'none';
 
@@ -464,14 +527,15 @@ def generate_multi_page_html(website_data):
 # STREAMLIT UI
 # =========================================================
 def main():
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title("🌐 AI Website Wireframe Generator")
         st.markdown("---")
-        st.write("1️⃣ Describe your website layout (specify pages and *their unique content*).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below to switch between desktop and mobile.")
+        st.write("1️⃣ Describe your website layout (aim for 5-10 pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
         st.markdown("---")
-        st.info("✅ **Enhanced:** Model is now instructed to generate unique content for every page to ensure tabs change meaningfully.")
+        st.success("✨ **New Feature:** Select **'Edit Mode'** below, then **double-click** any element in the preview to change its content!")
 
-    st.title("🚀 AI Website Wireframe Generator (Enhanced)")
+    st.title("🚀 AI Website Wireframe Generator (Editable)")
     st.markdown("Design a complete **multi-page website wireframe** from a text prompt.")
 
     prompt = st.text_area(
@@ -499,30 +563,32 @@ def main():
         # --- VIEW SELECTOR ---
         view_mode = st.radio(
             "Select View Mode:",
-            ('Desktop View', 'Mobile View'),
+            ('Desktop View', 'Mobile View', 'Edit Mode'),
             key='view_selector',
             horizontal=True,
             on_change=lambda: st.session_state.__setitem__('current_view', st.session_state.view_selector.lower().split()[0])
         )
         
-        # Pass the switch view function to the HTML component
+        # Pass the switch view function and initial state to the HTML component
         js_mode = st.session_state.get('current_view', 'desktop')
         updated_html = st.session_state.html_content
         
         # Add JavaScript injection to control the view from the Streamlit radio button
         js_injection = f"""
             <script>
-                // Call the JavaScript function defined in the HTML body
-                document.addEventListener('DOMContentLoaded', function() {{
-                    switchView('{js_mode}');
-                }});
-                switchView('{js_mode}'); // Ensure immediate change if session state updates
+                // This ensures the current Streamlit state is reflected in the HTML component on refresh/update
+                switchView('{js_mode}'); 
             </script>
         """
         
+        # Render the HTML component
         st.components.v1.html(updated_html + js_injection, height=900, scrolling=True)
 
-        with st.expander("📁 Download Files"):
+        # --- DOWNLOAD / INSPECT ---
+        with st.expander("📁 Download Files & Inspect JSON"):
+            st.warning("⚠️ **Edit Mode Caution:** Edits made visually in the browser do not automatically save back to the JSON structure below. This JSON only contains the data generated by Gemini.")
+            st.json(st.session_state.website_data)
+
             st.download_button(
                 label="Download JSON",
                 data=json.dumps(st.session_state.website_data, indent=2),
