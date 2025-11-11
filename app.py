@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 # =========================================================
 # LOAD ENVIRONMENT VARIABLES
 # =========================================================
+# Ensure your .env file in the same directory contains:
+# GEMINI_API_KEY="YOUR_API_KEY"
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -64,7 +66,7 @@ def extract_json_from_response(response_text):
         return None
 
 # =========================================================
-# GEMINI GENERATION FUNCTION (MODIFIED for MAX Content Density)
+# GEMINI GENERATION FUNCTION (MAX Content Density)
 # =========================================================
 def generate_website_json(prompt):
     """Generate structured website JSON using Gemini 2.5 Pro."""
@@ -131,7 +133,7 @@ Return only valid JSON (no markdown) using this structure:
         return None
 
 # =========================================================
-# HTML RENDERING (UNCHANGED)
+# HTML RENDERING 
 # =========================================================
 
 def generate_element_html(element):
@@ -543,6 +545,8 @@ def main():
             on_change=lambda: st.session_state.__setitem__('current_view', st.session_state.view_selector.lower().split()[0])
         )
         
+        st.caption("👈 **Scroll down inside the wireframe window below** to see the full content of the long page, or switch to **Mobile View**.")
+
         js_mode = st.session_state.get('current_view', 'desktop')
         updated_html = st.session_state.html_content
         
@@ -552,7 +556,8 @@ def main():
             </script>
         """
         
-        st.components.v1.html(updated_html + js_injection, height=900, scrolling=True)
+        # Increased height to 950 to be safe.
+        st.components.v1.html(updated_html + js_injection, height=950, scrolling=True)
 
         # --- DOWNLOAD / INSPECT ---
         with st.expander("📁 Download Files & Inspect JSON"):
