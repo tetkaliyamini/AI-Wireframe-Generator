@@ -86,7 +86,7 @@ Generate a clean, well-aligned, scrollable layout structure in JSON.
 
 **MAX CONTENT DENSITY RULES (CRITICAL):**
 1. **FULL CONTENT:** Every 'text', 'section', and 'card' element **MUST** contain a detailed, full paragraph of unique, descriptive content related to the page's purpose. Do not use short phrases or placeholders.
-2. **VERTICAL SPACE:** Ensure that pages are long. Set high 'y' coordinates and large 'height' values for sections to guarantee the wireframe extends vertically and requires scrolling, making it feel "full of content."
+2. **VERTICAL SPACE:** Ensure that pages are long. Set high 'y' coordinates (e.g., up to 2000px) and large 'height' values for sections to guarantee the wireframe extends vertically and requires scrolling, making it feel "full of content."
 3. **CLEAN LAYOUT:** Ensure elements are clearly separated and not cluttered. Maintain vertical spacing (y values) of at least 80px between major sections.
 
 **PAGE ORDER AND CONTENT RULES (MANDATORY):**
@@ -545,7 +545,9 @@ def main():
             on_change=lambda: st.session_state.__setitem__('current_view', st.session_state.view_selector.lower().split()[0])
         )
         
-        st.caption("👈 **Scroll down inside the wireframe window below** to see the full content of the long page, or switch to **Mobile View**.")
+        # <<< CRITICAL FIX HERE: Provide clear instructions for scrolling >>>
+        st.warning("⚠️ **IMPORTANT:** The pages are now very long to be content-rich. **You MUST scroll down inside the wireframe window below** (use the inner scroll bar) to see the full content of the page.")
+        # <<< END CRITICAL FIX >>>
 
         js_mode = st.session_state.get('current_view', 'desktop')
         updated_html = st.session_state.html_content
