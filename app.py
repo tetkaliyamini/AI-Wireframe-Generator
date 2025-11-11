@@ -64,7 +64,7 @@ def extract_json_from_response(response_text):
         return None
 
 # =========================================================
-# GEMINI GENERATION FUNCTION (MODIFIED)
+# GEMINI GENERATION FUNCTION (MODIFIED FOR ORDER & CLARITY)
 # =========================================================
 def generate_website_json(prompt):
     """Generate structured website JSON using Gemini 2.5 Pro."""
@@ -75,24 +75,25 @@ def generate_website_json(prompt):
         {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
     ]
 
-    # --- ENHANCED SYSTEM PROMPT FOR MANDATORY PAGES ---
+    # --- OPTIMIZED SYSTEM PROMPT ---
     system_prompt = """
 You are an expert UI/UX wireframe designer for multi-page websites.
 Generate a clean, well-aligned, scrollable layout structure in JSON.
 
-**VERY IMPORTANT:** Ensure that the content, element IDs, and general layout structure for each page in the "pages" array are unique and distinct based on the pageTitle. Do not copy content between pages.
+**CRITICAL TIMEOUT NOTE:** Due to API constraints, **limit the total output to 5 pages maximum** and ensure the content within each element is brief and concise to ensure rapid JSON generation.
 
-**MANDATORY PAGES:** The resulting website JSON **MUST** include pages titled "Login" and "Sign Up" (or "Register"). These pages must contain distinct login/registration forms (input fields and buttons).
+**CLARITY & STRUCTURE RULES:**
+1. **UNIQUE CONTENT:** Every page and element must have genuinely different, unique content (text, titles, IDs) tailored to its purpose. Do not repeat content between pages.
+2. **CLEAN LAYOUT:** Ensure elements are clearly separated and not cluttered. Maintain vertical spacing (y values) of at least 80px between major sections. Elements must be logically positioned.
 
-**PAGE COUNT RULE:** Unless the user specifies a lower number, generate between 5 and 10 distinct pages for the website (e.g., Home, About, Services, Pricing, Blog, Contact, Login, Sign Up, etc.) to ensure a comprehensive wireframe.
+**PAGE ORDER AND CONTENT RULES:**
+1. **FIRST TWO PAGES MUST BE:** "Login" and "Sign Up" (or "Register"). These two pages must be the **first two objects** in the "pages" array.
+2. **LOGIN PAGE:** Must contain inputs for Email/Username and Password, and a Button.
+3. **SIGN UP PAGE:** Must contain inputs for Name, Email, Password, and a Button.
 
-Design elements (x, y, width, height) to adapt reasonably well to a mobile stacking view (using larger widths like 90% for desktop sections).
+**PAGE COUNT RULE:** Generate a **maximum of 5 distinct pages** in total.
 
-Ensure:
-- Pages do not overlap elements.
-- Vertical spacing (y values) is consistent (minimum 80px between sections).
-- x values stay between 5%–95% for side padding.
-- Logical layout order: header → hero → sections → footer.
+Design elements (x, y, width, height) to adapt reasonably well to a mobile stacking view.
 
 Return only valid JSON (no markdown) using this structure:
 {
@@ -101,20 +102,24 @@ Return only valid JSON (no markdown) using this structure:
   "globalFooter": { "layout": [] },
   "pages": [
     {
-      "pageId": "unique_page_id",
-      "pageTitle": "Page Name",
+      "pageId": "login_page_id",
+      "pageTitle": "Login",
       "backgroundColor": "#ffffff",
-      "layout": [
-        { "id": "el_1", "type": "section|card|text|button|image|input", 
-          "x": 5, "y": 100, "width": 90, "height": 100, "content": "..." }
-      ]
-    }
+      "layout": [...] // Login elements here
+    },
+    {
+      "pageId": "signup_page_id",
+      "pageTitle": "Sign Up",
+      "backgroundColor": "#ffffff",
+      "layout": [...] // Sign Up elements here
+    },
+    // ... remaining user-requested pages follow ...
   ]
 }
     """
 
     try:
-        with st.spinner("🤖 Generating website layout with Gemini..."):
+        with st.spinner("🤖 Generating website layout with Gemini... (Optimized for order and clarity)"):
             model = genai.GenerativeModel(
                 "gemini-2.5-pro",
                 system_instruction=system_prompt,
@@ -127,12 +132,17 @@ Return only valid JSON (no markdown) using this structure:
                 return None
             return wireframe_data
     except Exception as e:
-        st.error(f"⚠️ Gemini generation failed: {e}")
+        st.error(f"⚠️ Gemini generation failed: {e}. Please try again with a simpler prompt.")
         return None
 
 # =========================================================
-# HTML RENDERING (ENHANCED)
+# HTML RENDERING (UNCHANGED as it relies on JSON array order)
 # =========================================================
+
+# The rest of the functions (generate_element_html and generate_multi_page_html) 
+# and the main Streamlit UI remain identical, as the HTML rendering already respects 
+# the order of pages in the JSON array to display the tabs.
+
 def generate_element_html(element):
     """Render a single layout element as visually enhanced HTML."""
     elem_type = element.get("type", "section")
@@ -190,9 +200,6 @@ def generate_element_html(element):
         </div>
     """
 
-# =========================================================
-# MULTI-PAGE HTML RENDERER (MODIFIED FOR EDITING)
-# =========================================================
 def generate_multi_page_html(website_data):
     """Convert JSON structure into visual HTML wireframe with multiple pages and views, including edit logic."""
     if not website_data:
@@ -217,7 +224,6 @@ def generate_multi_page_html(website_data):
         elements_html = ""
         current_max_y = 0
 
-        # Combine global and page elements for rendering
         all_elements = global_header + layout + global_footer
         all_elements.sort(key=lambda el: el.get("y", 0))
 
@@ -253,7 +259,7 @@ def generate_multi_page_html(website_data):
             }}
             .wireframe-wrapper {{
                 width: 100%;
-                max-width: 1200px; /* Desktop View */
+                max-width: 1200px;
                 border: 1px solid #ddd;
                 border-radius: 12px;
                 background: white;
@@ -263,7 +269,7 @@ def generate_multi_page_html(website_data):
             }}
             /* --- Mobile Wrapper Styles --- */
             .wireframe-mobile-wrapper {{
-                width: 375px; /* Mobile width standard */
+                width: 375px; 
                 height: 700px;
                 border: 10px solid #333;
                 border-radius: 30px;
@@ -356,7 +362,7 @@ def generate_multi_page_html(website_data):
                 z-index: 2;
             }}
             
-            /* --- NEW: Edit Mode Styles --- */
+            /* --- Edit Mode Styles --- */
             .edit-mode .element {{
                 border: 1px dashed #ff6b6b !important;
                 cursor: pointer;
@@ -500,23 +506,23 @@ def generate_multi_page_html(website_data):
     return html
 
 # =========================================================
-# STREAMLIT UI
+# STREAMLIT UI 
 # =========================================================
 def main():
     # --- SIDEBAR ---
     with st.sidebar:
         st.title("🌐 AI Website Wireframe Generator")
         st.markdown("---")
-        st.write("1️⃣ Describe your website layout (aim for 5-10 pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
+        st.write("1️⃣ Describe your website layout (aim for up to 3 core pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
         st.markdown("---")
-        st.info("⭐ **Mandatory Pages:** **Login** and **Sign Up** pages are now automatically included in every wireframe.")
+        st.info("✅ **Tab Order & Clarity:** Login and Sign Up pages are now the first two tabs, and all page content is unique and uncluttered.")
 
-    st.title("🚀 AI Website Wireframe Generator (Editable)")
+    st.title("🚀 AI Website Wireframe Generator (Editable & Structured)")
     st.markdown("Design a complete **multi-page website wireframe** from a text prompt.")
 
     prompt = st.text_area(
         "📝 Describe your website (pages, style, and layout):",
-        placeholder="e.g., Generate an 8-page consulting site with a Home, About, Services, Pricing, Blog, and Contact page. (Login and Sign Up will be added automatically).",
+        placeholder="💡 e.g., Generate a simple portfolio site with Home, Contact, and About pages. (Login and Sign Up will be automatically placed first). Keep descriptions brief to ensure speed.",
         height=150,
         key="prompt_input"
     )
@@ -576,4 +582,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
