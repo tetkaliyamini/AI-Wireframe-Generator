@@ -64,7 +64,7 @@ def extract_json_from_response(response_text):
         return None
 
 # =========================================================
-# GEMINI GENERATION FUNCTION (MODIFIED for detailed content)
+# GEMINI GENERATION FUNCTION (MODIFIED for MAX Content Density)
 # =========================================================
 def generate_website_json(prompt):
     """Generate structured website JSON using Gemini 2.5 Pro."""
@@ -75,22 +75,21 @@ def generate_website_json(prompt):
         {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
     ]
 
-    # --- UPDATED SYSTEM PROMPT: Focus on Content Detail ---
+    # --- FINAL SYSTEM PROMPT: Maximize Content and Vertical Space ---
     system_prompt = """
-You are an expert UI/UX wireframe designer for multi-page websites.
+You are an expert UI/UX wireframe designer for content-rich, multi-page websites.
 Generate a clean, well-aligned, scrollable layout structure in JSON.
 
 **CRITICAL TIMEOUT NOTE:** Limit the total output to **5 pages maximum**.
 
-**CONTENT DETAIL & UNIQUENESS RULES (NEW):**
-1. **HIGH-QUALITY CONTENT:** For all 'text' and 'section' type elements, use **detailed, descriptive, and non-repetitive paragraph content** that genuinely explains the purpose of that section (e.g., don't use "Lorem Ipsum" or "Placeholder Text").
-2. **UNIQUE CONTENT:** Every page and element must have genuinely different, unique content (text, titles, IDs) tailored to its page purpose.
+**MAX CONTENT DENSITY RULES (CRITICAL):**
+1. **FULL CONTENT:** Every 'text', 'section', and 'card' element **MUST** contain a detailed, full paragraph of unique, descriptive content related to the page's purpose. Do not use short phrases or placeholders.
+2. **VERTICAL SPACE:** Ensure that pages are long. Set high 'y' coordinates and large 'height' values for sections to guarantee the wireframe extends vertically and requires scrolling, making it feel "full of content."
 3. **CLEAN LAYOUT:** Ensure elements are clearly separated and not cluttered. Maintain vertical spacing (y values) of at least 80px between major sections.
 
 **PAGE ORDER AND CONTENT RULES (MANDATORY):**
 1. **FIRST TWO PAGES MUST BE:** "Login" and "Sign Up" (or "Register"). These two pages must be the **first two objects** in the "pages" array.
-2. **LOGIN PAGE:** Must contain inputs for Email/Username and Password, and a detailed Login Button.
-3. **SIGN UP PAGE:** Must contain inputs for Name, Email, Password, and a detailed Register Button.
+2. **LOGIN/SIGN UP:** Must have appropriate form inputs and detailed, descriptive button text (e.g., "Securely Log In to Your Account").
 
 **PAGE COUNT RULE:** Generate a **maximum of 5 distinct pages** in total.
 
@@ -102,25 +101,20 @@ Return only valid JSON (no markdown) using this structure:
   "globalHeader": { "layout": [] },
   "globalFooter": { "layout": [] },
   "pages": [
+    // Login and Sign Up pages first
     {
-      "pageId": "login_page_id",
-      "pageTitle": "Login",
-      "backgroundColor": "#ffffff",
-      "layout": [...] // Login elements here
+      "pageId": "login_page_id", "pageTitle": "Login", "backgroundColor": "#ffffff", "layout": [...]
     },
     {
-      "pageId": "signup_page_id",
-      "pageTitle": "Sign Up",
-      "backgroundColor": "#ffffff",
-      "layout": [...] // Sign Up elements here
+      "pageId": "signup_page_id", "pageTitle": "Sign Up", "backgroundColor": "#ffffff", "layout": [...]
     },
-    // ... remaining user-requested pages follow ...
+    // ... remaining content-rich user-requested pages follow ...
   ]
 }
     """
 
     try:
-        with st.spinner("🤖 Generating website layout with Gemini... (Creating detailed content)"):
+        with st.spinner("🤖 Generating content-rich wireframe layout... (This may take a moment)"):
             model = genai.GenerativeModel(
                 "gemini-2.5-pro",
                 system_instruction=system_prompt,
@@ -133,7 +127,7 @@ Return only valid JSON (no markdown) using this structure:
                 return None
             return wireframe_data
     except Exception as e:
-        st.error(f"⚠️ Gemini generation failed: {e}. Please try again with a simpler prompt, as requesting too much detailed content increases timeout risk.")
+        st.error(f"⚠️ Gemini generation failed: {e}. The request for maximum content may be hitting the API timeout limit. If this persists, please try a slightly simpler prompt.")
         return None
 
 # =========================================================
@@ -511,21 +505,21 @@ def main():
     with st.sidebar:
         st.title("🌐 AI Website Wireframe Generator")
         st.markdown("---")
-        st.write("1️⃣ Describe your website layout (aim for up to 3 core pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
+        st.write("1️⃣ Describe your website layout (aim for up to 3 content pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
         st.markdown("---")
-        st.info("✅ **Content Detail:** The generator will now focus on creating **unique, detailed, and meaningful content** for every element and page.")
+        st.info("🔥 **Max Content Mode:** The generator is now forced to produce **detailed, full paragraphs** and use large vertical spacing to create a content-rich, scrolling wireframe.")
 
-    st.title("🚀 AI Website Wireframe Generator (Detailed & Structured)")
-    st.markdown("Design a complete **multi-page website wireframe** from a text prompt.")
+    st.title("🚀 AI Website Wireframe Generator (Maximum Content Density)")
+    st.markdown("Design a **content-heavy, scrolling multi-page wireframe** from a text prompt.")
 
     prompt = st.text_area(
-        "📝 Describe your website (pages, style, and layout):",
-        placeholder="💡 e.g., Generate a simple portfolio site with Home, Contact, and About pages. The Home page needs a detailed mission statement and two project cards. (Login and Sign Up will be placed first).",
+        "📝 Describe your website (pages, style, and detailed content required):",
+        placeholder="💡 e.g., Generate a simple e-commerce site with Home, Products, and Checkout pages. The Home page should have a large hero section, three detailed feature sections, and a long footer. (Login and Sign Up will be placed first).",
         height=150,
         key="prompt_input"
     )
 
-    if st.button("✨ Generate Wireframe"):
+    if st.button("✨ Generate Content-Rich Wireframe"):
         if not prompt.strip():
             st.warning("Please enter a website description.")
         else:
