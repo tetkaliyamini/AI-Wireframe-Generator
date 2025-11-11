@@ -1,3 +1,4 @@
+
 import streamlit as st
 import json
 import re
@@ -8,8 +9,6 @@ from dotenv import load_dotenv
 # =========================================================
 # LOAD ENVIRONMENT VARIABLES
 # =========================================================
-# Ensure your .env file in the same directory contains:
-# GEMINI_API_KEY="YOUR_API_KEY"
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -66,7 +65,7 @@ def extract_json_from_response(response_text):
         return None
 
 # =========================================================
-# GEMINI GENERATION FUNCTION (MAX Content Density)
+# GEMINI GENERATION FUNCTION (Content Density & Alignment Focus)
 # =========================================================
 def generate_website_json(prompt):
     """Generate structured website JSON using Gemini 2.5 Pro."""
@@ -77,17 +76,17 @@ def generate_website_json(prompt):
         {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE},
     ]
 
-    # --- FINAL SYSTEM PROMPT: Maximize Content and Vertical Space ---
+    # --- System Prompt: Max Content Density and Alignment Reinforcement ---
     system_prompt = """
 You are an expert UI/UX wireframe designer for content-rich, multi-page websites.
 Generate a clean, well-aligned, scrollable layout structure in JSON.
 
 **CRITICAL TIMEOUT NOTE:** Limit the total output to **5 pages maximum**.
 
-**MAX CONTENT DENSITY RULES (CRITICAL):**
+**MAX CONTENT DENSITY & ALIGNMENT RULES (CRITICAL):**
 1. **FULL CONTENT:** Every 'text', 'section', and 'card' element **MUST** contain a detailed, full paragraph of unique, descriptive content related to the page's purpose. Do not use short phrases or placeholders.
 2. **VERTICAL SPACE:** Ensure that pages are long. Set high 'y' coordinates (e.g., up to 2000px) and large 'height' values for sections to guarantee the wireframe extends vertically and requires scrolling, making it feel "full of content."
-3. **CLEAN LAYOUT:** Ensure elements are clearly separated and not cluttered. Maintain vertical spacing (y values) of at least 80px between major sections.
+3. **ALIGNMENT:** For the main content elements ('text', 'section', 'card', 'image'), prefer width values of 90-95% and keep the x value low (around 2-5%) to ensure elements are nearly full-width and center-aligned, which improves layout in the mobile view simulation.
 
 **PAGE ORDER AND CONTENT RULES (MANDATORY):**
 1. **FIRST TWO PAGES MUST BE:** "Login" and "Sign Up" (or "Register"). These two pages must be the **first two objects** in the "pages" array.
@@ -116,7 +115,7 @@ Return only valid JSON (no markdown) using this structure:
     """
 
     try:
-        with st.spinner("🤖 Generating content-rich wireframe layout... (This may take a moment)"):
+        with st.spinner("🤖 Generating content-rich wireframe layout... (Optimizing for alignment)"):
             model = genai.GenerativeModel(
                 "gemini-2.5-pro",
                 system_instruction=system_prompt,
@@ -133,13 +132,12 @@ Return only valid JSON (no markdown) using this structure:
         return None
 
 # =========================================================
-# HTML RENDERING 
+# HTML RENDERING (CSS adjusted for better alignment)
 # =========================================================
 
 def generate_element_html(element):
     """Render a single layout element as visually enhanced HTML."""
     elem_type = element.get("type", "section")
-    # Escape single quotes in content for JS safety (if any)
     content = element.get("content", "Placeholder Content").replace("'", "&#39;")
     x, y = element.get("x", 5), element.get("y", 0)
     width, height = element.get("width", 90), element.get("height", 80)
@@ -284,12 +282,13 @@ def generate_multi_page_html(website_data):
                 width: 100%;
                 min-height: auto; 
             }}
+            /* FIX: Ensure elements stack cleanly and are wide enough for content */
             .mobile-screen .element {{
-                position: relative !important; 
+                position: relative !important; /* Forces block flow */
                 left: 0 !important;
                 top: auto !important;
-                width: 96% !important; 
-                margin: 10px auto; 
+                width: 90% !important; /* Increased width for better content flow */
+                margin: 10px auto; /* Centers elements */
                 height: 60px; 
             }}
             .mobile-screen .element-label {{ top: -15px; left: 5%; }}
@@ -509,9 +508,9 @@ def main():
         st.markdown("---")
         st.write("1️⃣ Describe your website layout (aim for up to 3 content pages).\n2️⃣ Click **Generate Wireframe**.\n3️⃣ Use the **View Selector** below the prompt to switch views.")
         st.markdown("---")
-        st.info("🔥 **Max Content Mode:** The generator is now forced to produce **detailed, full paragraphs** and use large vertical spacing to create a content-rich, scrolling wireframe.")
+        st.info("🔥 **Max Content & Alignment Mode:** The generator is optimized to produce **detailed, full paragraphs** and use sensible width/alignment for better viewing on all screen sizes.")
 
-    st.title("🚀 AI Website Wireframe Generator (Maximum Content Density)")
+    st.title("🚀 AI Website Wireframe Generator (Optimized Alignment)")
     st.markdown("Design a **content-heavy, scrolling multi-page wireframe** from a text prompt.")
 
     prompt = st.text_area(
@@ -521,7 +520,7 @@ def main():
         key="prompt_input"
     )
 
-    if st.button("✨ Generate Content-Rich Wireframe"):
+    if st.button("✨ Generate Optimized Wireframe"):
         if not prompt.strip():
             st.warning("Please enter a website description.")
         else:
@@ -545,9 +544,8 @@ def main():
             on_change=lambda: st.session_state.__setitem__('current_view', st.session_state.view_selector.lower().split()[0])
         )
         
-        # <<< CRITICAL FIX HERE: Provide clear instructions for scrolling >>>
-        st.warning("⚠️ **IMPORTANT:** The pages are now very long to be content-rich. **You MUST scroll down inside the wireframe window below** (use the inner scroll bar) to see the full content of the page.")
-        # <<< END CRITICAL FIX >>>
+        # CRITICAL FIX: Provide clear instructions for scrolling and alignment
+        st.warning("✅ **View Visibility Fix:** The wireframe elements are now optimized for both views. **Please remember to scroll down inside the wireframe window** (using the inner scroll bar) to see the full content of the long page.")
 
         js_mode = st.session_state.get('current_view', 'desktop')
         updated_html = st.session_state.html_content
@@ -558,7 +556,7 @@ def main():
             </script>
         """
         
-        # Increased height to 950 to be safe.
+        # Ensuring ample height for the scrolling window
         st.components.v1.html(updated_html + js_injection, height=950, scrolling=True)
 
         # --- DOWNLOAD / INSPECT ---
